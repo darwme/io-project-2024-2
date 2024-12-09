@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "nodemon bin/www.js",
+    "start-prod": "node bin/www.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
