@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PSO Result</title>
+    <link href="/styles/output.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <header><%- include('../partials/header'); %></header>
+    <main>
+      <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4">PSO Result</h1>
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+          <p class="text-lg mb-2">
+            <strong>Mejor Ruta:</strong>
+            <span id="mejor-ruta"><%= mejor_ruta %></span>
+          </p>
+          <p class="text-lg mb-4">
+            <strong>Mejor Costo:</strong>
+            <span id="mejor-costo"><%= mejor_costo %></span>
+          </p>
+          <canvas id="chart" width="400" height="400"></canvas>
+        </div>
+      </div>
+    </main>
+    <footer><%- include('../partials/footer'); %></footer>
+    <script>
+      const coordenadasClientes = JSON.parse("<%= coordenadas_clientes %>");
+      const mejorRutaInicial = JSON.parse("<%= mejor_ruta %>");
+      const ctx = document.getElementById("chart").getContext("2d");
+      const mejorRutaElement = document.getElementById("mejor-ruta");
+      const mejorCostoElement = document.getElementById("mejor-costo");
+
+      const chart = new Chart(ctx, {
+        type: "scatter",
+        data: {
+          datasets: [
+            {
+              label: "Clientes",
+              data: coordenadasClientes.map((coord, index) => ({
+                x: coord[0],
+                y: coord[1],
+                label: `Cliente ${index + 1}`,
+              })),
+              backgroundColor: "rgba(255, 99, 132, 1)",
+              borderColor: "rgba(255, 99, 132, 1)",
+              borderWidth: 1,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: false,
+            },
+            ...mejorRutaInicial
+              .map((ruta, index) => {
+                const ida = [
+                  { x: 50, y: 50 }, // Starting point (warehouse)
+                  ...ruta.map((cliente) => ({
+                    x: coordenadasClientes[cliente][0],
+                    y: coordenadasClientes[cliente][1],
+                  })),
+                ];
+                const vuelta = [
+                  ...ruta
+                    .map((cliente) => ({
+                      x: coordenadasClientes[cliente][0],
+                      y: coordenadasClientes[cliente][1],
+                    }))
+                    .reverse(),
+                  { x: 50, y: 50 }, // Ending point (warehouse)
+                ];
+                return [
+                  {
+                    label: `Vehículo ${index + 1} - Ida`,
+                    data: ida,
+                    borderColor: `rgba(${Math.floor(
+                      Math.random() * 255
+                    )}, ${Math.floor(Math.random() * 255)}, ${Math.floor(
+                      Math.random() * 255
+                    )}, 1)`,
+                    borderWidth: 2,
+                    fill: false,
+                    showLine: true,
+                    borderDash: [], // Solid line for ida
+                  },
+                  {
+                    label: `Vehículo ${index + 1} - Vuelta`,
+                    data: vuelta,
+                    borderColor: `rgba(${Math.floor(
+                      Math.random() * 255
+                    )}, ${Math.floor(Math.random() * 255)}, ${Math.floor(
+                      Math.random() * 255
+                    )}, 1)`,
+                    borderWidth: 2,
+                    fill: false,
+                    showLine: true,
+                    borderDash: [5, 5], // Dashed line for vuelta
+                  },
+                ];
+              })
+              .flat(),
+          ],
+        },
+        options: {
+          scales: {
+            x: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Coordenada X",
+              },
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Coordenada Y",
+              },
+            },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  return (
+                    context.raw.label || `(${context.raw.x}, ${context.raw.y})`
+                  );
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const socket = io();
+
+      socket.on("update", (data) => {
+        const { iteracion, mejor_ruta, mejor_costo } = data;
+        mejorRutaElement.textContent = JSON.stringify(mejor_ruta);
+        mejorCostoElement.textContent = mejor_costo;
+
+        const rutas = mejor_ruta
+          .map((ruta, index) => {
+            const ida = [
+              { x: 50, y: 50 }, // Starting point (warehouse)
+              ...ruta.map((cliente) => ({
+                x: coordenadasClientes[cliente][0],
+                y: coordenadasClientes[cliente][1],
+              })),
+            ];
+            const vuelta = [
+              ...ruta
+                .map((cliente) => ({
+                  x: coordenadasClientes[cliente][0],
+                  y: coordenadasClientes[cliente][1],
+                }))
+                .reverse(),
+              { x: 50, y: 50 }, // Ending point (warehouse)
+            ];
+            return [
+              {
+                label: `Vehículo ${index + 1} - Ida`,
+                data: ida,
+                borderColor: `rgba(${Math.floor(
+                  Math.random() * 255
+                )}, ${Math.floor(Math.random() * 255)}, ${Math.floor(
+                  Math.random() * 255
+                )}, 1)`,
+                borderWidth: 2,
+                fill: false,
+                showLine: true,
+                borderDash: [], // Solid line for ida
+              },
+              {
+                label: `Vehículo ${index + 1} - Vuelta`,
+                data: vuelta,
+                borderColor: `rgba(${Math.floor(
+                  Math.random() * 255
+                )}, ${Math.floor(Math.random() * 255)}, ${Math.floor(
+                  Math.random() * 255
+                )}, 1)`,
+                borderWidth: 2,
+                fill: false,
+                showLine: true,
+                borderDash: [5, 5], // Dashed line for vuelta
+              },
+            ];
+          })
+          .flat();
+
+        chart.data.datasets = [
+          {
+            label: "Clientes",
+            data: coordenadasClientes.map((coord, index) => ({
+              x: coord[0],
+              y: coord[1],
+              label: `Cliente ${index + 1}`,
+            })),
+            backgroundColor: "rgba(255, 99, 132, 1)",
+            borderColor: "rgba(255, 99, 132, 1)",
+            borderWidth: 1,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            showLine: false,
+          },
+          ...rutas,
+        ];
+
+        chart.update();
+      });
+    </script>
+  </body>
+</html>
